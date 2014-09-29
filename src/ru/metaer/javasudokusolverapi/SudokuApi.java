@@ -13,27 +13,44 @@ public class SudokuApi {
         String message;
         String solution = null;
         LanguageManager.getInstance().setCurrentLocale("ru");
+        Map result = new HashMap<String,Object>();
         try{
             solution = ss.getSolutionString(inputString);
-            code = 1;
-            message = "Successfully solved";
+            result.put("solution", solution);
+            result.put("code", 1);
+            result.put("message", "Задача успешно решена");
+            result.put("type", "solved");
         }
         catch (SudokuSolverLibException e) {
-            message = e.getMessage();
-            if (e instanceof UserErrorException) {
-                code = -1;
-            } else if (e instanceof NoSolutionException) {
-                code = 0;
+            result.put("message", e.getMessage());
+            if (e instanceof NoSolutionException) {
+                result.put("code", 0);
+                result.put("type", "nosolution");
+            } else if (e instanceof UserErrorException) {
+                result.put("code", -1);
+                result.put("type", "usererror");
+                if (e instanceof WrongSudokuConditionException || e instanceof TaskIsAlreadySolvedException) {
+                    Map extra = new HashMap<String, Object>();
+                    result.put("extra", extra);
+                    if (e instanceof RepeatInColumnException) {
+                        extra.put("subtype", "repeat_in_col");
+                        extra.put("number", ((RepeatInColumnException) e).getCol());
+                    } else if (e instanceof RepeatInRowException) {
+                        extra.put("subtype", "repeat_in_row");
+                        extra.put("number", ((RepeatInRowException) e).getRow());
+                    } else if (e instanceof RepeatInSquareException) {
+                        extra.put("subtype", "repeat_in_square");
+                        extra.put("number", ((RepeatInSquareException) e).getSquareNumber());
+                    } else if (e instanceof TaskIsAlreadySolvedException) {
+                        extra.put("subtype", "alreadysolved");
+                    }
+                }
             } else if (e instanceof InternalErrorException) {
-                code = -2;
+                result.put("code", -2);
+                result.put("type", "internalerror");
             }
         }
-        Map result = new HashMap<String,Object>();
-        result.put("code", code);
-        result.put("message", message);
-        if (solution != null) {
-            result.put("solution", solution);
-        }
+
         JSONObject json = new JSONObject(result);
         return json.toString();
     }
